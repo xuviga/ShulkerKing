@@ -1,0 +1,46 @@
+# English (US) - Default language file for ShulkerKing
+# ShulkerKing Plugin Messages
+
+messages:
+  no-permission: "&cYou don't have permission to use this command."
+  no-permission-open: "&cYou don't have permission to open shulker boxes."
+  no-permission-offhand: "&cYou don't have permission to use shulker boxes in your off-hand."
+  no-permission-place: "&cYou don't have permission to place shulker boxes."
+  cannot-place: "&cCannot place shulker box in this location!"
+  shulker-placed: "&aShulker box successfully placed!"
+  in-combat: "&cYou cannot open shulker boxes while in combat!"
+  item-changed: "&cThe item in your hand has changed! Closing shulker box."
+  plugin-reloaded: "&aShulkerKing configuration reloaded!"
+  debug-enabled: "&aDebug mode enabled."
+  debug-disabled: "&cDebug mode disabled."
+  
+  # New feature messages
+  cooldown-active: "&cYou must wait &e{time}s &cbefore opening another shulker box!"
+  cooldown-ready: "&a✓ Ready to open!"
+  world-blacklisted: "&cShulker boxes cannot be opened in this world!"
+  offhand-disabled: "&cOffhand usage is currently disabled!"
+  no-nesting: "&cYou cannot put shulker boxes inside other shulker boxes!"
+  item-blacklisted: "&cThis item cannot be placed in shulker boxes!"
+  item-removed: "&eBlacklisted item has been removed from the shulker box!"
+  item-warned: "&6Warning: &eThis item is not recommended for shulker boxes!"
+  
+  # Command messages
+  command:
+    reload: "&aPlugin configuration reloaded successfully!"
+    debug-on: "&aDebug mode has been &2enabled&a."
+    debug-off: "&aDebug mode has been &cdisabled&a."
+    invalid-args: "&cInvalid arguments. Use: &7/shulkerking [reload|debug]"
+    
+debug:
+  session-created: "Created shulker session for {player} with {item}"
+  session-closed: "Closed shulker session for {player}"
+  contents-saved: "Saved shulker contents for {player}"
+  combat-started: "Player {player} entered combat"
+  combat-ended: "Player {player} left combat"
+  cooldown-set: "Set cooldown for {player} - {time}s"
+  world-blocked: "Blocked shulker access for {player} in world {world}"
+  item-blacklist-triggered: "Blocked blacklisted item {item} for {player}"
+  item-drop: "Closed shulker inventory for {player} due to item drop"
+  death: "Closed shulker inventory for {player} due to death"
+  quit: "Closed shulker inventory for {player} due to quit"
+  nesting: "Prevented shulker box nesting for {player}"

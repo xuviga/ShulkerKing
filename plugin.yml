@@ -1,0 +1,25 @@
+name: ShulkerKing
+version: 2.0.3
+main: com.shulkerking.ShulkerKingPlugin
+api-version: 1.16
+author: XuViGaN
+description: Open shulker boxes directly from your hand
+website: https://github.com/xuvigan/shulkerking
+
+commands:
+  shulkerking:
+    description: ShulkerKing main command
+    usage: /<command> [reload]
+    permission: shulkerking.admin
+    aliases: [sk, shulker]
+
+permissions:
+  shulkerking.open:
+    description: Allows opening shulker boxes from hand
+    default: true
+  shulkerking.admin:
+    description: Allows reloading plugin configuration
+    default: op
+  shulkerking.offhand:
+    description: Allows opening shulker boxes from offhand
+    default: true

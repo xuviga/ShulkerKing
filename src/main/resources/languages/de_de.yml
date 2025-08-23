@@ -1,0 +1,42 @@
+# German - Deutsch für das ShulkerKing Plugin
+# ShulkerKing Plugin Messages
+
+messages:
+  no-permission: "&cDu hast keine Berechtigung, diesen Befehl zu verwenden."
+  no-permission-open: "&cDu hast keine Berechtigung, Shulker-Boxen zu öffnen."
+  no-permission-offhand: "&cDu hast keine Berechtigung, Shulker-Boxen in der Nebenhand zu verwenden."
+  in-combat: "&cDu kannst keine Shulker-Boxen während des Kampfes öffnen!"
+  item-changed: "&cDer Gegenstand in deiner Hand hat sich geändert! Schließe Shulker-Box."
+  plugin-reloaded: "&aShulkerKing Konfiguration neu geladen!"
+  debug-enabled: "&aDebug-Modus aktiviert."
+  debug-disabled: "&cDebug-Modus deaktiviert."
+  
+  # Nachrichten für neue Funktionen
+  cooldown-active: "&cDu musst &e{time}s &cwarten, bevor du eine weitere Shulker-Box öffnen kannst!"
+  world-blacklisted: "&cShulker-Boxen können in dieser Welt nicht geöffnet werden!"
+  offhand-disabled: "&cDie Verwendung der Nebenhand ist derzeit deaktiviert!"
+  no-nesting: "&cDu kannst keine Shulker-Boxen in andere Shulker-Boxen legen!"
+  item-blacklisted: "&cDieser Gegenstand kann nicht in Shulker-Boxen platziert werden!"
+  item-removed: "&eVerbotener Gegenstand wurde aus der Shulker-Box entfernt!"
+  item-warned: "&6Warnung: &eDieser Gegenstand wird nicht für Shulker-Boxen empfohlen!"
+  
+  # Befehlsnachrichten
+  command:
+    reload: "&aPlugin-Konfiguration erfolgreich neu geladen!"
+    debug-on: "&aDebug-Modus wurde &2aktiviert&a."
+    debug-off: "&aDebug-Modus wurde &cdeaktiviert&a."
+    invalid-args: "&cUngültige Argumente. Verwende: &7/shulkerking [reload|debug]"
+    
+debug:
+  session-created: "Shulker-Session für {player} mit {item} erstellt"
+  session-closed: "Shulker-Session für {player} geschlossen"
+  contents-saved: "Shulker-Inhalt für {player} gespeichert"
+  combat-started: "Spieler {player} hat Kampf begonnen"
+  combat-ended: "Spieler {player} hat Kampf beendet"
+  cooldown-set: "Cooldown für {player} gesetzt - {time}s"
+  world-blocked: "Shulker-Zugriff für {player} in Welt {world} blockiert"
+  item-blacklist-triggered: "Verbotener Gegenstand {item} für {player} blockiert"
+  item-drop: "Shulker-Inventar für {player} wegen Gegenstand-Drop geschlossen"
+  death: "Shulker-Inventar für {player} wegen Tod geschlossen"
+  quit: "Shulker-Inventar für {player} wegen Verlassen geschlossen"
+  nesting: "Shulker-Box Verschachtelung für {player} verhindert"

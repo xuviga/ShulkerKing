@@ -1,0 +1,42 @@
+# Spanish - Español para el plugin ShulkerKing
+# ShulkerKing Plugin Messages
+
+messages:
+  no-permission: "&cNo tienes permisos para usar este comando."
+  no-permission-open: "&cNo tienes permisos para abrir shulker boxes."
+  no-permission-offhand: "&cNo tienes permisos para usar shulker boxes en tu mano secundaria."
+  in-combat: "&c¡No puedes abrir shulker boxes mientras estás en combate!"
+  item-changed: "&c¡El objeto en tu mano ha cambiado! Cerrando shulker box."
+  plugin-reloaded: "&a¡Configuración de ShulkerKing recargada!"
+  debug-enabled: "&aModo debug activado."
+  debug-disabled: "&cModo debug desactivado."
+  
+  # Mensajes de nuevas funcionalidades
+  cooldown-active: "&c¡Debes esperar &e{time}s &cantes de abrir otra shulker box!"
+  world-blacklisted: "&c¡Las shulker boxes no se pueden abrir en este mundo!"
+  offhand-disabled: "&c¡El uso de la mano secundaria está actualmente deshabilitado!"
+  no-nesting: "&c¡No puedes poner shulker boxes dentro de otras shulker boxes!"
+  item-blacklisted: "&c¡Este objeto no se puede colocar en shulker boxes!"
+  item-removed: "&e¡El objeto prohibido ha sido removido de la shulker box!"
+  item-warned: "&6Advertencia: &e¡Este objeto no es recomendado para shulker boxes!"
+  
+  # Mensajes de comandos
+  command:
+    reload: "&a¡Configuración del plugin recargada exitosamente!"
+    debug-on: "&aEl modo debug ha sido &2activado&a."
+    debug-off: "&aEl modo debug ha sido &cdesactivado&a."
+    invalid-args: "&cArgumentos inválidos. Usa: &7/shulkerking [reload|debug]"
+    
+debug:
+  session-created: "Sesión de shulker creada para {player} con {item}"
+  session-closed: "Sesión de shulker cerrada para {player}"
+  contents-saved: "Contenido de shulker guardado para {player}"
+  combat-started: "Jugador {player} entró en combate"
+  combat-ended: "Jugador {player} salió del combate"
+  cooldown-set: "Cooldown establecido para {player} - {time}s"
+  world-blocked: "Acceso a shulker bloqueado para {player} en mundo {world}"
+  item-blacklist-triggered: "Objeto prohibido {item} bloqueado para {player}"
+  item-drop: "Inventario de shulker cerrado para {player} por soltar objeto"
+  death: "Inventario de shulker cerrado para {player} por muerte"
+  quit: "Inventario de shulker cerrado para {player} por desconexión"
+  nesting: "Anidamiento de shulker box prevenido para {player}"
