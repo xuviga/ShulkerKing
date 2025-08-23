@@ -2,7 +2,6 @@ package com.shulkerking.managers;
 
 import com.shulkerking.ShulkerKingPlugin;
 import org.bukkit.entity.Player;
-import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -82,24 +81,20 @@ public class CooldownManager {
      */
     public double getCooldownTime(Player player) {
         // Check permission-based cooldown overrides
-        ConfigurationSection overrides = plugin.getConfig().getConfigurationSection("cooldown.permission-overrides");
-        if (overrides != null) {
-            double shortestCooldown = plugin.getConfig().getDouble("cooldown.default-time", 3.0);
-            
-            for (String permission : overrides.getKeys(false)) {
-                if (player.hasPermission(permission)) {
-                    double permCooldown = overrides.getDouble(permission, shortestCooldown);
-                    if (permCooldown < shortestCooldown) {
-                        shortestCooldown = permCooldown;
-                    }
-                }
-            }
-            
-            return shortestCooldown;
+        if (player.hasPermission("shulkerking.cooldown.bypass")) {
+            return 0.0;
+        }
+        
+        if (player.hasPermission("shulkerking.cooldown.premium")) {
+            return plugin.getConfig().getDouble("cooldown.premium", 1.0);
+        }
+        
+        if (player.hasPermission("shulkerking.cooldown.vip")) {
+            return plugin.getConfig().getDouble("cooldown.vip", 2.0);
         }
         
         // Default cooldown
-        return plugin.getConfig().getDouble("cooldown.default-time", 3.0);
+        return plugin.getConfig().getDouble("cooldown.default", 3.0);
     }
     
     /**
@@ -122,7 +117,7 @@ public class CooldownManager {
      */
     public String getCooldownMessage(Player player) {
         double remaining = getRemainingCooldown(player);
-        String format = plugin.getConfig().getString("cooldown.visual.format", "&c⏱ {time}s");
+        String format = plugin.getConfig().getString("cooldown.visual-display.lore", "&7Кулдаун: &c{time} сек");
         return format.replace("{time}", String.format("%.1f", remaining));
     }
     
@@ -130,14 +125,14 @@ public class CooldownManager {
      * Check if visual cooldown is enabled
      */
     public boolean isVisualCooldownEnabled() {
-        return plugin.getConfig().getBoolean("cooldown.visual.enabled", true);
+        return plugin.getConfig().getBoolean("cooldown.visual-display.enabled", true);
     }
     
     /**
      * Check if cooldown should be shown on item
      */
     public boolean shouldShowOnItem() {
-        return plugin.getConfig().getBoolean("cooldown.visual.show-on-item", true);
+        return plugin.getConfig().getBoolean("cooldown.visual-display.show-progress", true);
     }
     
     /**

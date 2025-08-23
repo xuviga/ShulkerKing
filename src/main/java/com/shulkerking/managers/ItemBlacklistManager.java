@@ -28,7 +28,7 @@ public class ItemBlacklistManager {
             return false;
         }
         
-        List<String> blacklistedItems = plugin.getConfig().getStringList("item-blacklist.blocked-items");
+        List<String> blacklistedItems = plugin.getConfig().getStringList("item-blacklist.items");
         String itemType = item.getType().name();
         
         return blacklistedItems.contains(itemType);
@@ -38,11 +38,11 @@ public class ItemBlacklistManager {
      * Handle blacklisted item placement attempt
      */
     public void handleBlacklistedItem(Player player, ItemStack item, InventoryClickEvent event) {
-        String action = plugin.getConfig().getString("item-blacklist.action", "CANCEL");
+        String action = plugin.getConfig().getString("item-blacklist.mode", "BLOCK");
         String message = getBlacklistMessage();
         
         switch (action.toUpperCase()) {
-            case "CANCEL":
+            case "BLOCK":
                 // Item placement will be cancelled by the calling method
                 player.sendMessage(message);
                 plugin.getSoundManager().playBlockedSound(player);
@@ -87,13 +87,13 @@ public class ItemBlacklistManager {
      * Get list of blacklisted items
      */
     public List<String> getBlacklistedItems() {
-        return plugin.getConfig().getStringList("item-blacklist.blocked-items");
+        return plugin.getConfig().getStringList("item-blacklist.items");
     }
     
     /**
      * Get blacklist action type
      */
     public String getBlacklistAction() {
-        return plugin.getConfig().getString("item-blacklist.action", "CANCEL");
+        return plugin.getConfig().getString("item-blacklist.mode", "BLOCK");
     }
 }

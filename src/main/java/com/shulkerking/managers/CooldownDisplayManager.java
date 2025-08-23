@@ -121,8 +121,12 @@ public class CooldownDisplayManager {
                 String cleanLine = line.replaceAll("§[0-9a-fk-or]", ""); // Remove color codes
                 if (!cleanLine.contains("Cooldown:") && 
                     !cleanLine.contains("cooldown:") && 
+                    !cleanLine.contains("Кулдаун:") &&
+                    !cleanLine.contains("кулдаун:") &&
                     !cleanLine.contains("Готов к открытию") &&
-                    !cleanLine.contains("Ready to open")) {
+                    !cleanLine.contains("Ready to open") &&
+                    !cleanLine.contains("✓ Готов") &&
+                    !cleanLine.contains("✓ Ready")) {
                     cleanLore.add(line);
                 }
             }
@@ -275,11 +279,19 @@ public class CooldownDisplayManager {
                 ItemMeta meta = item.getItemMeta();
                 if (meta != null && meta.hasLore()) {
                     List<String> lore = meta.getLore();
-                    String cooldownLore = plugin.getConfig().getString("cooldown.visual-display.lore", "&7Cooldown: &c{time} seconds");
                     
                     // Remove cooldown lore lines
-                    lore.removeIf(line -> line.contains("Cooldown:") || 
-                                         line.contains(plugin.getColorManager().colorize(cooldownLore.split(" ")[0])));
+                    lore.removeIf(line -> {
+                        String cleanLine = line.replaceAll("§[0-9a-fk-or]", "");
+                        return cleanLine.contains("Cooldown:") || 
+                               cleanLine.contains("cooldown:") || 
+                               cleanLine.contains("Кулдаун:") ||
+                               cleanLine.contains("кулдаун:") ||
+                               cleanLine.contains("Готов к открытию") ||
+                               cleanLine.contains("Ready to open") ||
+                               cleanLine.contains("✓ Готов") ||
+                               cleanLine.contains("✓ Ready");
+                    });
                     
                     meta.setLore(lore.isEmpty() ? null : lore);
                     item.setItemMeta(meta);

@@ -162,7 +162,6 @@ public class PlayerListener implements Listener {
             if (result != null && result.getHitBlock() != null) {
                 // Place on the hit block's face
                 Block hitBlock = result.getHitBlock();
-                org.bukkit.util.Vector hitNormal = result.getHitBlockFace().getDirection();
                 targetBlock = hitBlock.getRelative(result.getHitBlockFace());
             } else {
                 // Fallback: place at player's feet if no target found

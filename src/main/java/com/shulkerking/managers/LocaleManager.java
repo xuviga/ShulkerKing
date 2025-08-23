@@ -23,7 +23,7 @@ public class LocaleManager {
     public LocaleManager(ShulkerKingPlugin plugin) {
         this.plugin = plugin;
         this.languages = new HashMap<>();
-        this.defaultLanguage = plugin.getConfig().getString("language.default-language", "ru_ru");
+        this.defaultLanguage = plugin.getConfig().getString("language.default", "en_us");
         
         loadLanguages();
     }
@@ -92,10 +92,10 @@ public class LocaleManager {
     }
     
     public String getMessage(String locale, String key) {
-        // Check if forced language is set
-        String forcedLanguage = plugin.getConfig().getString("language.force-language", "auto");
-        if (!forcedLanguage.equals("auto")) {
-            locale = forcedLanguage;
+        // Check if auto-detect is disabled
+        boolean autoDetect = plugin.getConfig().getBoolean("language.auto-detect", true);
+        if (!autoDetect) {
+            locale = defaultLanguage;
         }
         
         // Try player's locale first

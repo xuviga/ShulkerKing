@@ -23,7 +23,7 @@ public class CombatManager {
     }
     
     public boolean isInCombat(Player player) {
-        if (!plugin.getConfig().getBoolean("settings.pvp-block", false)) {
+        if (!plugin.getConfig().getBoolean("pvp-block.enabled", true)) {
             return false;
         }
         
@@ -32,7 +32,7 @@ public class CombatManager {
             return false;
         }
         
-        long combatTimeout = plugin.getConfig().getLong("settings.pvp-timeout", 10) * 1000;
+        long combatTimeout = plugin.getConfig().getLong("pvp-block.combat-time", 10) * 1000;
         boolean inCombat = (System.currentTimeMillis() - lastCombatTime) < combatTimeout;
         
         if (!inCombat) {
@@ -67,7 +67,7 @@ public class CombatManager {
     public int getCombatPlayersCount() {
         // Remove expired combat entries
         long currentTime = System.currentTimeMillis();
-        long combatTimeout = plugin.getConfig().getLong("settings.pvp-timeout", 10) * 1000;
+        long combatTimeout = plugin.getConfig().getLong("pvp-block.combat-time", 10) * 1000;
         
         combatData.entrySet().removeIf(entry -> 
             (currentTime - entry.getValue()) >= combatTimeout);
@@ -80,7 +80,7 @@ public class CombatManager {
      * @return true if PvP blocking is enabled
      */
     public boolean isCombatBlockingEnabled() {
-        return plugin.getConfig().getBoolean("settings.pvp-block", false);
+        return plugin.getConfig().getBoolean("pvp-block.enabled", true);
     }
     
     /**
@@ -92,7 +92,7 @@ public class CombatManager {
         }
         
         long currentTime = System.currentTimeMillis();
-        long combatTimeout = plugin.getConfig().getLong("settings.pvp-timeout", 10) * 1000;
+        long combatTimeout = plugin.getConfig().getLong("pvp-block.combat-time", 10) * 1000;
         
         combatData.entrySet().removeIf(entry -> 
             (currentTime - entry.getValue()) >= combatTimeout);

@@ -23,6 +23,10 @@ messages:
   item-blacklisted: "&cThis item cannot be placed in shulker boxes!"
   item-removed: "&eBlacklisted item has been removed from the shulker box!"
   item-warned: "&6Warning: &eThis item is not recommended for shulker boxes!"
+  no-drop-while-shulker-open: "&cYou cannot drop items while a shulker box is open!"
+  no-hotkey-while-shulker-open: "&cYou cannot move shulkers with hotkeys 1-9 while one is open!"
+  no-move-open-shulker: "&cYou cannot move an open shulker box!"
+  shulker-closed-movement: "&cShulker box closed due to movement attempt!"
   
   # Command messages
   command:

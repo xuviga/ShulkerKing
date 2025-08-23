@@ -1,6 +1,7 @@
 package com.shulkerking.managers;
 
 import com.shulkerking.ShulkerKingPlugin;
+import com.shulkerking.holders.ShulkerInventoryHolder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.ShulkerBox;
@@ -28,20 +29,38 @@ public class ShulkerInventoryManager {
     
     public boolean openShulkerInventory(Player player, ItemStack shulkerItem, boolean isMainHand) {
         if (!isShulkerBox(shulkerItem)) {
+            plugin.debugLog("Failed to open: not a shulker box for " + player.getName());
+            return false;
+        }
+        
+        // Дополнительные проверки безопасности
+        if (player == null || !player.isOnline()) {
+            plugin.debugLog("Failed to open: player is null or offline");
+            return false;
+        }
+        
+        if (shulkerItem.getAmount() != 1) {
+            plugin.debugLog("Failed to open: shulker stack size is not 1 for " + player.getName());
             return false;
         }
         
         // Check if player already has a session open
         if (hasActiveSession(player)) {
+            plugin.debugLog("Closing existing session for " + player.getName());
             closeShulkerInventory(player);
         }
         
         BlockStateMeta meta = (BlockStateMeta) shulkerItem.getItemMeta();
-        ShulkerBox shulkerBox = (ShulkerBox) meta.getBlockState();
+        if (meta == null) {
+            plugin.debugLog("Failed to open: no meta for " + player.getName());
+            return false;
+        }
         
-        // Create inventory with shulker contents
-        Inventory inventory = Bukkit.createInventory(null, 27, "Shulker Box");
-        inventory.setContents(shulkerBox.getInventory().getContents());
+        ShulkerBox shulkerBox = (ShulkerBox) meta.getBlockState();
+        if (shulkerBox == null) {
+            plugin.debugLog("Failed to open: no shulker state for " + player.getName());
+            return false;
+        }
         
         // Create session to track this interaction
         ShulkerSession session = new ShulkerSession(
@@ -50,6 +69,14 @@ public class ShulkerInventoryManager {
             isMainHand,
             System.currentTimeMillis()
         );
+        
+        // Create custom holder
+        ShulkerInventoryHolder holder = new ShulkerInventoryHolder(player, session);
+        
+        // Create inventory with custom holder
+        Inventory inventory = Bukkit.createInventory(holder, 27, "Shulker Box");
+        holder.setInventory(inventory);
+        inventory.setContents(shulkerBox.getInventory().getContents());
         
         activeSessions.put(player.getUniqueId(), session);
         
@@ -89,10 +116,10 @@ public class ShulkerInventoryManager {
             player.getInventory().getItemInMainHand() : 
             player.getInventory().getItemInOffHand();
         
-        // Принудительное логирование для диагностики
-        plugin.getLogger().info("[SAVE] Starting to save shulker contents for " + player.getName());
-        plugin.getLogger().info("[SAVE] Current item: " + (currentItem != null ? currentItem.getType() : "null"));
-        plugin.getLogger().info("[SAVE] Is main hand: " + session.isMainHand());
+        // Debug логирование
+        plugin.debugLog("[SAVE] Starting to save shulker contents for " + player.getName());
+        plugin.debugLog("[SAVE] Current item: " + (currentItem != null ? currentItem.getType() : "null"));
+        plugin.debugLog("[SAVE] Is main hand: " + session.isMainHand());
         
         // Verify the item is still the same shulker box
         if (!isSameShulkerBox(currentItem, session.getOriginalItem())) {
@@ -109,10 +136,10 @@ public class ShulkerInventoryManager {
                 itemCount += stack.getAmount();
             }
         }
-        plugin.getLogger().info("[SAVE] Items to save: " + itemCount + " total items in " + contents.length + " slots");
+        plugin.debugLog("[SAVE] Items to save: " + itemCount + " total items in " + contents.length + " slots");
         
         // Update the shulker box contents
-        if (currentItem.getItemMeta() instanceof BlockStateMeta) {
+        if (currentItem != null && currentItem.getItemMeta() instanceof BlockStateMeta) {
             BlockStateMeta meta = (BlockStateMeta) currentItem.getItemMeta();
             plugin.debugLog("[SAVE] Got BlockStateMeta: " + meta.getClass().getSimpleName());
             
@@ -162,7 +189,7 @@ public class ShulkerInventoryManager {
                                 finalCount += stack.getAmount();
                             }
                         }
-                                plugin.getLogger().info("[SAVE] FINAL VERIFICATION: " + finalCount + " items in final shulker");
+                                plugin.debugLog("[SAVE] FINAL VERIFICATION: " + finalCount + " items in final shulker");
                     }
                 }
                 
@@ -171,7 +198,9 @@ public class ShulkerInventoryManager {
                 plugin.debugLog("[SAVE] ERROR: BlockState is not a ShulkerBox: " + meta.getBlockState().getClass().getSimpleName());
             }
         } else {
-            plugin.debugLog("[SAVE] ERROR: ItemMeta is not BlockStateMeta: " + currentItem.getItemMeta().getClass().getSimpleName());
+            plugin.debugLog("[SAVE] ERROR: ItemMeta is not BlockStateMeta: " + 
+                (currentItem != null && currentItem.getItemMeta() != null ? 
+                    currentItem.getItemMeta().getClass().getSimpleName() : "null"));
         }
     }
     
@@ -230,7 +259,7 @@ public class ShulkerInventoryManager {
         return blockMeta.getBlockState() instanceof ShulkerBox;
     }
     
-    private boolean isSameShulkerBox(ItemStack current, ItemStack original) {
+    public boolean isSameShulkerBox(ItemStack current, ItemStack original) {
         if (current == null || original == null) {
             return false;
         }

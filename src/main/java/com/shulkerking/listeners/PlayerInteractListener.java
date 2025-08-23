@@ -93,19 +93,19 @@ public class PlayerInteractListener implements Listener {
         // Cancel the event to prevent normal shulker box behavior
         event.setCancelled(true);
         
-        // Get cooldown time before setting it
-        double cooldownTime = plugin.getCooldownManager().getCooldownTime(player);
+        // Open the shulker box inventory
+        boolean isMainHand = event.getHand() == EquipmentSlot.HAND;
+        plugin.getInventoryManager().openShulkerInventory(player, item, isMainHand);
         
-        // Set cooldown and play sound
+        // Get cooldown time and set cooldown AFTER successful opening
+        double cooldownTime = plugin.getCooldownManager().getCooldownTime(player);
         plugin.getCooldownManager().setCooldown(player);
-        plugin.getSoundManager().playCooldownSound(player);
         
         // Apply visual cooldown display (convert seconds to ticks)
         long cooldownTicks = (long) (cooldownTime * 20);
         plugin.getCooldownDisplayManager().startVisualCountdown(player, item, cooldownTicks);
         
-        // Open the shulker box inventory
-        boolean isMainHand = event.getHand() == EquipmentSlot.HAND;
-        plugin.getInventoryManager().openShulkerInventory(player, item, isMainHand);
+        // Play sounds
+        plugin.getSoundManager().playOpenSound(player);
     }
 }

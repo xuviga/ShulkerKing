@@ -5,7 +5,6 @@ import com.shulkerking.listeners.InventoryListener;
 import com.shulkerking.listeners.PlayerInteractListener;
 import com.shulkerking.listeners.PlayerListener;
 import com.shulkerking.managers.*;
-import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
