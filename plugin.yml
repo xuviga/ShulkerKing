@@ -10,8 +10,28 @@ commands:
   shulkerking:
     description: ShulkerKing main command
     usage: /<command> [reload]
-    permission: shulkerking.admin
-    aliases: [sk, shulker]
+    permissions:
+      shulkerking.open:
+        description: Allows opening shulker boxes from hand
+        default: true
+      shulkerking.offhand:
+        description: Allows using shulker boxes in off-hand
+        default: true
+      shulkerking.place:
+        description: Allows placing shulker boxes with Shift+RMB
+        default: true
+      shulkerking.admin:
+        description: Access to admin commands
+        default: op
+      shulkerking.cooldown.vip:
+        description: VIP cooldown reduction
+        default: false
+      shulkerking.cooldown.premium:
+        description: Premium cooldown reduction
+        default: false
+      shulkerking.cooldown.bypass:
+        description: Bypass cooldown completely
+        default: false
 
 permissions:
   shulkerking.open:
