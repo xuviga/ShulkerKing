@@ -64,7 +64,7 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         saveDefaultConfig();
         
         if (isDebugEnabled()) {
-            getLogger().info("[DEBUG] Плагин загружен в режиме отладки");
+            debugLog("Плагин загружен в режиме отладки");
         }
     }
     
@@ -193,11 +193,11 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         visualCooldownEnabled = getConfig().getBoolean("cooldown.visual-display.enabled", true);
         
         if (debugEnabled) {
-            getLogger().info("[DEBUG] Конфигурация кэширована:");
-            getLogger().info("[DEBUG] - PvP блокировка: " + pvpBlockEnabled);
-            getLogger().info("[DEBUG] - Кулдауны: " + cooldownEnabled);
-            getLogger().info("[DEBUG] - Звуки: " + soundsEnabled);
-            getLogger().info("[DEBUG] - Визуальные кулдауны: " + visualCooldownEnabled);
+            debugLog("Конфигурация кэширована:");
+            debugLog("- PvP блокировка: " + pvpBlockEnabled);
+            debugLog("- Кулдауны: " + cooldownEnabled);
+            debugLog("- Звуки: " + soundsEnabled);
+            debugLog("- Визуальные кулдауны: " + visualCooldownEnabled);
         }
     }
     
@@ -223,7 +223,7 @@ public final class ShulkerKingPlugin extends JavaPlugin {
             inventoryManager = new ShulkerInventoryManager(this);
             
             if (debugEnabled) {
-                getLogger().info("[DEBUG] Все менеджеры успешно инициализированы");
+                debugLog("Все менеджеры успешно инициализированы");
             }
             
             return true;
@@ -245,7 +245,7 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         pluginManager.registerEvents(new PlayerListener(this), this);
         
         if (debugEnabled) {
-            getLogger().info("[DEBUG] Слушатели событий зарегистрированы");
+            debugLog("Слушатели событий зарегистрированы");
         }
     }
     
@@ -257,7 +257,7 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         if (command != null) {
             command.setExecutor(new ShulkerKingCommand(this));
             if (debugEnabled) {
-                getLogger().info("[DEBUG] Команды зарегистрированы");
+                debugLog("Команды зарегистрированы");
             }
         } else {
             getLogger().warning("Не удалось зарегистрировать команду /shulkerking!");
@@ -279,7 +279,7 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         }, 20L * 60L, 20L * 60L); // Every minute
         
         if (debugEnabled) {
-            getLogger().info("[DEBUG] Асинхронные задачи запланированы");
+            debugLog("Асинхронные задачи запланированы");
         }
     }
     
@@ -305,6 +305,16 @@ public final class ShulkerKingPlugin extends JavaPlugin {
                 localeManager.reloadLanguages();
             }
             
+            // Restore visual cooldowns for online players
+            for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+                for (org.bukkit.inventory.ItemStack item : player.getInventory().getContents()) {
+                    if (item != null && cooldownManager.hasCooldown(player, item)) {
+                        String itemIdentifier = cooldownManager.getItemIdentifier(item);
+                        cooldownDisplayManager.startVisualCountdown(player, itemIdentifier);
+                    }
+                }
+            }
+            
             getLogger().info("Конфигурация успешно перезагружена!");
             
         } catch (Exception e) {
@@ -313,6 +323,13 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         }
     }
     
+    /**
+     * Get plugin instance for static access
+     * @return plugin instance
+     */
+    public static ShulkerKingPlugin getInstance() {
+        return instance;
+    }
     
     public ShulkerInventoryManager getInventoryManager() {
         return inventoryManager;
@@ -399,14 +416,6 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         if (isDebugEnabled()) {
             getLogger().info("[DEBUG] " + message);
         }
-    }
-    
-    /**
-     * Get plugin instance for static access
-     * @return plugin instance
-     */
-    public static ShulkerKingPlugin getInstance() {
-        return instance;
     }
     
     /**

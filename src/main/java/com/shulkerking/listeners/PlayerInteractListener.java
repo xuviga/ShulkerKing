@@ -23,10 +23,10 @@ public class PlayerInteractListener implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
-        
+
         Player player = event.getPlayer();
         ItemStack item = event.getItem();
-        
+
         // Check if item is a shulker box
         if (!plugin.getInventoryManager().isShulkerBox(item)) {
             return;
@@ -41,7 +41,7 @@ public class PlayerInteractListener implements Listener {
         }
         
         // Check hand permissions
-        if (event.getHand() != null && event.getHand() == EquipmentSlot.OFF_HAND) {
+        if (event.getHand() == EquipmentSlot.OFF_HAND) {
             if (!plugin.getConfig().getBoolean("settings.offhand", true)) {
                 player.sendMessage(plugin.getMessage(player, "messages.offhand-disabled"));
                 plugin.getSoundManager().playBlockedSound(player);
@@ -62,7 +62,7 @@ public class PlayerInteractListener implements Listener {
             event.setCancelled(true);
             return;
         }
-        
+
         if (event.getHand() == EquipmentSlot.OFF_HAND && !player.hasPermission("shulkerking.offhand")) {
             player.sendMessage(plugin.getMessage(player, "messages.no-permission-offhand"));
             plugin.getSoundManager().playBlockedSound(player);
@@ -70,9 +70,9 @@ public class PlayerInteractListener implements Listener {
             return;
         }
         
-        // Check cooldown
-        if (plugin.getCooldownManager().hasCooldown(player)) {
-            double remaining = plugin.getCooldownManager().getRemainingCooldown(player);
+        // Check cooldown for specific item
+        if (plugin.getCooldownManager().hasCooldown(player, item)) {
+            double remaining = plugin.getCooldownManager().getRemainingCooldown(player, item);
             String cooldownMsg = plugin.getMessage(player, "messages.cooldown-active")
                 .replace("{time}", String.format("%.1f", remaining));
             player.sendMessage(cooldownMsg);
@@ -97,13 +97,14 @@ public class PlayerInteractListener implements Listener {
         boolean isMainHand = event.getHand() == EquipmentSlot.HAND;
         plugin.getInventoryManager().openShulkerInventory(player, item, isMainHand);
         
-        // Get cooldown time and set cooldown AFTER successful opening
-        double cooldownTime = plugin.getCooldownManager().getCooldownTime(player);
-        plugin.getCooldownManager().setCooldown(player);
-        
-        // Apply visual cooldown display (convert seconds to ticks)
-        long cooldownTicks = (long) (cooldownTime * 20);
-        plugin.getCooldownDisplayManager().startVisualCountdown(player, item, cooldownTicks);
+        // Set cooldown after successful opening
+        plugin.getCooldownManager().setCooldown(player, item);
+
+        // Start visual countdown
+        if (plugin.getConfig().getBoolean("cooldown.visual-display.enabled", true)) {
+            String itemIdentifier = plugin.getCooldownManager().getItemIdentifier(item);
+            plugin.getCooldownDisplayManager().startVisualCountdown(player, itemIdentifier);
+        }
         
         // Play sounds
         plugin.getSoundManager().playOpenSound(player);

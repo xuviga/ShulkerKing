@@ -71,24 +71,8 @@ public class PlayerListener implements Listener {
         }
     }
     
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onPlayerDropItem(PlayerDropItemEvent event) {
-        Player player = event.getPlayer();
-        
-        // Check if player has an active shulker session
-        if (!plugin.getInventoryManager().hasActiveSession(player)) {
-            return;
-        }
-        
-        // Check if the dropped item is the shulker box being edited
-        // Skip if this is a recent placement action to prevent false "item-changed" message
-        if (plugin.getInventoryManager().isShulkerBox(event.getItemDrop().getItemStack()) && 
-            !plugin.getInventoryManager().isRecentPlacementAction(player)) {
-            plugin.getInventoryManager().closeShulkerInventory(player);
-            player.sendMessage(plugin.getMessage(player, "messages.item-changed"));
-            plugin.debugLog("Closed shulker inventory for " + player.getName() + " due to item drop");
-        }
-    }
+    // УДАЛЕН: Дублирующий обработчик onPlayerDropItem
+    // Обработка выбрасывания предметов теперь полностью в InventoryListener
     
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
@@ -195,13 +179,13 @@ public class PlayerListener implements Listener {
         }
         
         // ИСПРАВЛЕНИЕ: Если у игрока есть активная сессия с этим шалкером, сначала сохраняем содержимое
-        plugin.getLogger().info("[PLACE] Checking for active session for " + player.getName());
+        plugin.debugLog("[PLACE] Checking for active session for " + player.getName());
         if (plugin.getInventoryManager().hasActiveSession(player)) {
-            plugin.getLogger().info("[PLACE] Found active session, closing and saving before placement");
+            plugin.debugLog("[PLACE] Found active session, closing and saving before placement");
             plugin.getInventoryManager().closeShulkerInventory(player);
-            plugin.getLogger().info("[PLACE] Closed active shulker session before placement for " + player.getName());
+            plugin.debugLog("[PLACE] Closed active shulker session before placement for " + player.getName());
         } else {
-            plugin.getLogger().info("[PLACE] No active session found for " + player.getName());
+            plugin.debugLog("[PLACE] No active session found for " + player.getName());
         }
         
         // Place the shulker box
@@ -237,11 +221,11 @@ public class PlayerListener implements Listener {
                             plugin.debugLog("[PLACE] Slot content: " + stack.getType() + " x" + stack.getAmount());
                         }
                     }
-                    plugin.getLogger().info("[PLACE] Total items in shulker: " + itemCount + " items in " + nonEmptySlots + " non-empty slots");
+                    plugin.debugLog("[PLACE] Total items in shulker: " + itemCount + " items in " + nonEmptySlots + " non-empty slots");
                     
                     if (itemCount > 0) {
                         // Копируем содержимое в размещенный шалкер
-                        plugin.getLogger().info("[PLACE] Copying " + itemCount + " items to placed shulker");
+                        plugin.debugLog("[PLACE] Copying " + itemCount + " items to placed shulker");
                         
                         // Альтернативный способ: копируем по одному предмету
                         org.bukkit.inventory.Inventory placedInventory = placedShulker.getInventory();
@@ -261,13 +245,13 @@ public class PlayerListener implements Listener {
                                 copiedCount += stack.getAmount();
                             }
                         }
-                        plugin.getLogger().info("[PLACE] Verification: " + copiedCount + " items copied to placed shulker");
+                        plugin.debugLog("[PLACE] Verification: " + copiedCount + " items copied to placed shulker");
                         
                         if (copiedCount != itemCount) {
                             plugin.getLogger().warning("[PLACE] WARNING: Item count mismatch! Original: " + itemCount + ", Copied: " + copiedCount);
                         }
                     } else {
-                        plugin.getLogger().info("[PLACE] Shulker box is empty, no items to copy for " + player.getName());
+                        plugin.debugLog("[PLACE] Shulker box is empty, no items to copy for " + player.getName());
                     }
                     
                     // Копируем кастомное имя если есть
@@ -298,7 +282,7 @@ public class PlayerListener implements Listener {
                             // Обновляем блок
                             delayedShulker.update();
                             
-                            plugin.getLogger().info("[PLACE] DELAYED: Set " + finalItemCount + " items to placed shulker");
+                            plugin.debugLog("[PLACE] DELAYED: Set " + finalItemCount + " items to placed shulker");
                             
                             // Финальная проверка через еще один тик
                             plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
@@ -310,11 +294,11 @@ public class PlayerListener implements Listener {
                                             finalCount += stack.getAmount();
                                         }
                                     }
-                                    plugin.getLogger().info("[PLACE] FINAL CHECK: Placed shulker contains " + finalCount + " items after delayed update");
+                                    plugin.debugLog("[PLACE] FINAL CHECK: Placed shulker contains " + finalCount + " items after delayed update");
                                     if (finalCount == 0 && finalItemCount > 0) {
                                         plugin.getLogger().warning("[PLACE] CRITICAL: Items were still lost after delayed placement! Original: " + finalItemCount + ", Final: " + finalCount);
                                     } else if (finalCount == finalItemCount) {
-                                        plugin.getLogger().info("[PLACE] SUCCESS: All items preserved during placement!");
+                                        plugin.debugLog("[PLACE] SUCCESS: All items preserved during placement!");
                                     }
                                 }
                             }, 1L);

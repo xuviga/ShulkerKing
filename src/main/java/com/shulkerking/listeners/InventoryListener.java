@@ -12,6 +12,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Map;
@@ -362,8 +363,9 @@ public class InventoryListener implements Listener {
     
     /**
      * Блокировка выбрасывания предметов когда открыт шалкер
+     * ИСПРАВЛЕНИЕ: Принудительное сохранение содержимого перед блокировкой
      */
-    @EventHandler(priority = EventPriority.HIGH)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerDropItem(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
         
@@ -372,14 +374,65 @@ public class InventoryListener implements Listener {
             return;
         }
         
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сначала принудительно сохраняем содержимое шалкера
+        plugin.debugLog("[ANTI-DUPE] Player " + player.getName() + " tried to drop item while shulker open - forcing save");
+        
         // Проверяем, открыт ли шалкер-инвентарь
         if (player.getOpenInventory() != null && 
             player.getOpenInventory().getTopInventory().getHolder() instanceof ShulkerInventoryHolder) {
             
+            // НОВОЕ: Принудительно сохраняем содержимое шалкера в предмет в руке
+            try {
+                // Получаем активную сессию и открытый инвентарь
+                ShulkerInventoryManager.ShulkerSession session = plugin.getInventoryManager().getSession(player);
+                Inventory openInventory = player.getOpenInventory().getTopInventory();
+                
+                if (session != null && openInventory != null) {
+                    plugin.getInventoryManager().saveShulkerContents(player, session, openInventory);
+                    plugin.debugLog("[ANTI-DUPE] Successfully saved shulker contents before blocking drop for " + player.getName());
+                } else {
+                    plugin.debugLog("[ANTI-DUPE] WARNING: Could not get session or inventory for " + player.getName());
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("[ANTI-DUPE] Failed to save shulker contents for " + player.getName() + ": " + e.getMessage());
+            }
+            
+            // Блокируем выбрасывание
             event.setCancelled(true);
             player.sendMessage(plugin.getMessage(player, "messages.no-drop-while-shulker-open"));
             plugin.getSoundManager().playBlockedSound(player);
-            plugin.debugLog("Prevented item drop while shulker open for " + player.getName());
+            plugin.debugLog("[ANTI-DUPE] Prevented item drop while shulker open for " + player.getName());
+            
+            // ДОПОЛНИТЕЛЬНАЯ ЗАЩИТА: Обновляем предмет в руке игрока
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                player.updateInventory();
+                plugin.debugLog("[ANTI-DUPE] Updated inventory for " + player.getName() + " after blocking drop");
+            }, 1L);
+        }
+    }
+    
+    /**
+     * НОВЫЙ МЕТОД: Обработка выбрасывания шалкер-боксов из руки
+     * Защита от дюпликации при выбрасывании самого шалкер-бокса
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onShulkerBoxDrop(PlayerDropItemEvent event) {
+        Player player = event.getPlayer();
+        ItemStack droppedItem = event.getItemDrop().getItemStack();
+        
+        // Проверяем, является ли выброшенный предмет шалкер-боксом
+        if (!plugin.getInventoryManager().isShulkerBox(droppedItem)) {
+            return;
+        }
+        
+        // Если у игрока была активная сессия с этим шалкером
+        if (plugin.getInventoryManager().hasActiveSession(player)) {
+            plugin.debugLog("[ANTI-DUPE] Player " + player.getName() + " dropped shulker box while having active session");
+            
+            // Закрываем сессию и сохраняем содержимое
+            plugin.getInventoryManager().closeShulkerInventory(player);
+            player.sendMessage(plugin.getMessage(player, "messages.item-changed"));
+            plugin.debugLog("[ANTI-DUPE] Closed shulker session due to shulker box drop for " + player.getName());
         }
     }
 }
