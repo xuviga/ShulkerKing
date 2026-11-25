@@ -15,20 +15,12 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class InventoryListener implements Listener {
     
     private final ShulkerKingPlugin plugin;
-    private final Map<UUID, Long> lastSaveTime;
-    private final Map<UUID, Long> lastClickTime;
     
     public InventoryListener(ShulkerKingPlugin plugin) {
         this.plugin = plugin;
-        this.lastSaveTime = new ConcurrentHashMap<>();
-        this.lastClickTime = new ConcurrentHashMap<>();
     }
     
     @EventHandler(priority = EventPriority.NORMAL)
@@ -49,10 +41,6 @@ public class InventoryListener implements Listener {
             String reason = "";
             
             if (session != null) {
-                ItemStack currentShulker = session.isMainHand() ? 
-                    player.getInventory().getItemInMainHand() : 
-                    player.getInventory().getItemInOffHand();
-                
                 // 1. МГНОВЕННОЕ закрытие при hotkey действиях (цифры 1-9)
                 if (event.getHotbarButton() != -1) {
                     shouldCloseShulker = true;
@@ -61,14 +49,14 @@ public class InventoryListener implements Listener {
                 
                 // 2. Любое взаимодействие с открытым шалкером в инвентаре игрока
                 if (!shouldCloseShulker && event.getClickedInventory() == player.getInventory()) {
-                    // Проверяем клик по открытому шалкеру
-                    if (clickedItem != null && plugin.getInventoryManager().isSameShulkerBox(clickedItem, currentShulker)) {
+                    // Проверяем клик по открытому шалкеру (точная проверка по session-id)
+                    if (clickedItem != null && plugin.getInventoryManager().isSessionItem(clickedItem, session)) {
                         shouldCloseShulker = true;
                         reason = "clicked on open shulker";
                     }
                     
                     // Проверяем перемещение курсором на открытый шалкер
-                    if (cursorItem != null && plugin.getInventoryManager().isSameShulkerBox(cursorItem, currentShulker)) {
+                    if (cursorItem != null && plugin.getInventoryManager().isSessionItem(cursorItem, session)) {
                         shouldCloseShulker = true;
                         reason = "cursor item is open shulker";
                     }
@@ -130,18 +118,6 @@ public class InventoryListener implements Listener {
             return;
         }
         
-        // Задержка в 1 тик для предотвращения спама кликов
-        UUID playerId = player.getUniqueId();
-        long currentTime = System.currentTimeMillis();
-        Long lastClick = lastClickTime.get(playerId);
-        
-        if (lastClick != null && (currentTime - lastClick) < 50) { // 1 тик = ~50мс
-            event.setCancelled(true);
-            plugin.debugLog("Click too fast, cancelled for " + player.getName());
-            return;
-        }
-        lastClickTime.put(playerId, currentTime);
-        
         // Check if player has an active shulker session
         if (!plugin.getInventoryManager().hasActiveSession(player)) {
             plugin.debugLog("No active session for " + player.getName());
@@ -159,33 +135,12 @@ public class InventoryListener implements Listener {
             player.getInventory().getItemInMainHand() : 
             player.getInventory().getItemInOffHand();
         
-        // If the shulker box is no longer in hand, close the inventory
-        if (!plugin.getInventoryManager().isShulkerBox(currentItem)) {
+        // If the session item is no longer in the expected hand, close the inventory
+        if (!plugin.getInventoryManager().isSessionItem(currentItem, session)) {
             plugin.getInventoryManager().closeShulkerInventory(player);
             player.sendMessage(plugin.getMessage(player, "messages.item-changed"));
             event.setCancelled(true);
             return;
-        }
-        
-        // Allow normal inventory interactions for the shulker GUI
-        // Теперь проверяем через holder вместо title
-        if (event.getInventory().getHolder() instanceof ShulkerInventoryHolder) {
-            
-            // Throttle saves to prevent spam - max once per 100ms per player
-            Long lastSave = lastSaveTime.get(playerId);
-            
-            if (lastSave == null || (currentTime - lastSave) > 100) {
-                lastSaveTime.put(playerId, currentTime);
-                
-                // Save contents immediately (synchronous to prevent race conditions)
-                ShulkerInventoryManager.ShulkerSession currentSession = 
-                    plugin.getInventoryManager().getSession(player);
-                if (currentSession != null) {
-                    plugin.getInventoryManager().saveShulkerContents(
-                        player, currentSession, event.getInventory()
-                    );
-                }
-            }
         }
         
         // Check item blacklist and prevent putting shulker boxes inside themselves
@@ -193,10 +148,12 @@ public class InventoryListener implements Listener {
         ItemStack cursorItem = event.getCursor();
         
         // Check if placing an item from cursor into shulker
-        if (cursorItem != null && event.getInventory().getHolder() instanceof ShulkerInventoryHolder) {
+        if (cursorItem != null) {
             
             // Check item blacklist
             if (plugin.getItemBlacklistManager().isBlacklisted(cursorItem)) {
+                // Отменяем ДО handleBlacklistedItem: раньше событие не отменялось и предмет проходил
+                event.setCancelled(true);
                 plugin.getItemBlacklistManager().handleBlacklistedItem(player, cursorItem, event);
                 return;
             }
@@ -212,14 +169,28 @@ public class InventoryListener implements Listener {
         }
         
         // Check if moving an item that's already in the shulker
-        if (clickedItem != null && event.getInventory().getHolder() instanceof ShulkerInventoryHolder) {
-            
-            if (plugin.getInventoryManager().isShulkerBox(clickedItem)) {
-                event.setCancelled(true);
-                player.sendMessage(plugin.getMessage(player, "messages.no-nesting"));
-                plugin.getSoundManager().playBlockedSound(player);
-                plugin.debugLog("Prevented shulker box nesting for " + player.getName());
-            }
+        if (clickedItem != null && plugin.getInventoryManager().isShulkerBox(clickedItem)) {
+            event.setCancelled(true);
+            player.sendMessage(plugin.getMessage(player, "messages.no-nesting"));
+            plugin.getSoundManager().playBlockedSound(player);
+            plugin.debugLog("Prevented shulker box nesting for " + player.getName());
+            return;
+        }
+        
+        // Сохраняем ПОСЛЕ применения клика (следующим тиком): раньше сохранение шло
+        // до клика и предмет в руке отставал на одно действие - окно для дюпа.
+        if (!event.isCancelled()) {
+            final ShulkerInventoryManager.ShulkerSession activeSession = session;
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (!plugin.getInventoryManager().hasActiveSession(player)) {
+                    return;
+                }
+                org.bukkit.inventory.Inventory top =
+                    player.getOpenInventory().getTopInventory();
+                if (top != null && top.getHolder() instanceof ShulkerInventoryHolder) {
+                    plugin.getInventoryManager().saveShulkerContents(player, activeSession, top);
+                }
+            });
         }
     }
     
@@ -280,8 +251,8 @@ public class InventoryListener implements Listener {
             player.getInventory().getItemInMainHand() : 
             player.getInventory().getItemInOffHand();
         
-        // If the shulker box is no longer in hand, close the inventory
-        if (!plugin.getInventoryManager().isShulkerBox(currentItem)) {
+        // If the session item is no longer in the expected hand, close the inventory
+        if (!plugin.getInventoryManager().isSessionItem(currentItem, session)) {
             plugin.getInventoryManager().closeShulkerInventory(player);
             player.sendMessage(plugin.getMessage(player, "messages.item-changed"));
             event.setCancelled(true);
@@ -296,7 +267,7 @@ public class InventoryListener implements Listener {
             // Check item blacklist
             if (draggedItem != null && plugin.getItemBlacklistManager().isBlacklisted(draggedItem)) {
                 event.setCancelled(true);
-                player.sendMessage(plugin.getMessage(player, "messages.blacklisted-item"));
+                player.sendMessage(plugin.getMessage(player, "messages.item-blacklisted"));
                 plugin.getSoundManager().playBlockedSound(player);
                 plugin.debugLog("Prevented blacklisted item drag for " + player.getName());
                 return;
@@ -311,53 +282,47 @@ public class InventoryListener implements Listener {
                 return;
             }
             
-            // Save contents immediately (synchronous to prevent race conditions)
-            ShulkerInventoryManager.ShulkerSession currentSession = 
-                plugin.getInventoryManager().getSession(player);
-            if (currentSession != null) {
-                plugin.getInventoryManager().saveShulkerContents(
-                    player, currentSession, event.getInventory()
-                );
-            }
+            // Сохраняем следующим тиком - после того как Bukkit применит drag
+            final ShulkerInventoryManager.ShulkerSession activeSession = session;
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (!plugin.getInventoryManager().hasActiveSession(player)) {
+                    return;
+                }
+                org.bukkit.inventory.Inventory top = player.getOpenInventory().getTopInventory();
+                if (top != null && top.getHolder() instanceof ShulkerInventoryHolder) {
+                    plugin.getInventoryManager().saveShulkerContents(player, activeSession, top);
+                }
+            });
         }
     }
     
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onInventoryMoveItem(InventoryMoveItemEvent event) {
-        // Prevent hoppers from moving items to/from shulker inventories
-        if (event.getDestination().getSize() == 27 && 
-            event.getDestination().getViewers().size() > 0) {
-            
-            for (org.bukkit.entity.HumanEntity viewer : event.getDestination().getViewers()) {
-                if (viewer instanceof Player) {
-                    Player player = (Player) viewer;
-                    if (plugin.getInventoryManager().hasActiveSession(player) &&
-                        event.getDestination().equals(player.getOpenInventory().getTopInventory())) {
-                        
-                        event.setCancelled(true);
-                        plugin.debugLog("Prevented hopper interaction with active shulker session for " + player.getName());
-                        return;
-                    }
-                }
-            }
+        // GUI шалкера виртуальный (наш holder), реальные хопперы к нему доступа не имеют.
+        // Блокируем только реальное взаимодействие с нашим инвентарём, а не любой 27-слотовый.
+        if (isSessionInventory(event.getDestination()) || isSessionInventory(event.getSource())) {
+            event.setCancelled(true);
+            plugin.debugLog("Prevented hopper interaction with an active shulker GUI");
         }
-        
-        // Also check source inventory
-        if (event.getSource().getSize() == 27 && 
-            event.getSource().getViewers().size() > 0) {
-            
-            for (org.bukkit.entity.HumanEntity viewer : event.getSource().getViewers()) {
-                if (viewer instanceof Player) {
-                    Player player = (Player) viewer;
-                    if (plugin.getInventoryManager().hasActiveSession(player) &&
-                        event.getSource().equals(player.getOpenInventory().getTopInventory())) {
-                        
-                        event.setCancelled(true);
-                        plugin.debugLog("Prevented hopper interaction with active shulker session for " + player.getName());
-                        return;
-                    }
-                }
-            }
+    }
+
+    private boolean isSessionInventory(Inventory inventory) {
+        return inventory != null && inventory.getHolder() instanceof ShulkerInventoryHolder;
+    }
+
+    /**
+     * Если другой плагин запретил открытие GUI - сразу закрываем сессию,
+     * чтобы содержимое вернулось в предмет, а не осталось в памяти.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInventoryOpen(org.bukkit.event.inventory.InventoryOpenEvent event) {
+        if (!(event.getInventory().getHolder() instanceof ShulkerInventoryHolder)) {
+            return;
+        }
+        if (event.isCancelled() && event.getPlayer() instanceof Player) {
+            Player player = (Player) event.getPlayer();
+            plugin.getInventoryManager().closeShulkerInventory(player);
+            plugin.debugLog("Shulker GUI open was cancelled, session rolled back for " + player.getName());
         }
     }
     

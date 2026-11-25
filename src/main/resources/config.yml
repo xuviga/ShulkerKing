@@ -1,0 +1,104 @@
+# ============================================================
+#  ShulkerKing - configuration
+#  Все ключи читаются кодом напрямую; не переименовывайте их.
+# ============================================================
+
+settings:
+  # Разрешить открытие из главной руки
+  main-hand: true
+  # Разрешить открытие из второй руки (нужно право shulkerking.offhand)
+  offhand: true
+  # Разрешить размещение шалкер-бокса через Shift+ПКМ с сохранением содержимого
+  shift-place: true
+  # Подробные логи в консоль
+  debug: false
+
+language:
+  # Язык по умолчанию, если локаль игрока не найдена
+  default: en_us
+  # Определять язык по клиенту игрока
+  auto-detect: true
+
+cooldown:
+  # Включить систему кулдаунов
+  enabled: true
+  # Стандартный кулдаун (сек)
+  default: 3.0
+  # Кулдаун для права shulkerking.cooldown.vip (сек)
+  vip: 2.0
+  # Кулдаун для права shulkerking.cooldown.premium (сек)
+  premium: 1.0
+
+  visual-display:
+    # Показывать таймер в лоре предмета
+    enabled: true
+    # Обновлять лор каждую секунду (иначе только при открытии)
+    live-update: true
+    format: "&7Кулдаун: &c{time}с"
+    ready-message: "&a✓ Готов к открытию"
+    # Сколько тиков держать сообщение "Готов"
+    ready-message-duration: 40
+
+pvp-block:
+  # Запрещать открытие в бою
+  enabled: true
+  # Сколько секунд после последнего урона считать игрока в бою
+  combat-time: 10
+
+sounds:
+  enabled: true
+  open:
+    sound: "BLOCK_SHULKER_BOX_OPEN"
+    volume: 1.0
+    pitch: 1.0
+  close:
+    sound: "BLOCK_SHULKER_BOX_CLOSE"
+    volume: 1.0
+    pitch: 1.0
+  cooldown:
+    sound: "ENTITY_VILLAGER_NO"
+    volume: 0.5
+    pitch: 1.2
+  blocked:
+    sound: "BLOCK_NOTE_BLOCK_BASS"
+    volume: 0.8
+    pitch: 0.5
+  place:
+    sound: "BLOCK_STONE_PLACE"
+    volume: 1.0
+    pitch: 1.0
+
+item-blacklist:
+  enabled: false
+  # BLOCK - запретить и отменить, REMOVE - удалить предмет, WARN - только предупредить
+  mode: "BLOCK"
+  message: "&cЭтот предмет нельзя помещать в шалкер-боксы!"
+  items:
+    - "BEDROCK"
+    - "COMMAND_BLOCK"
+    - "CHAIN_COMMAND_BLOCK"
+    - "REPEATING_COMMAND_BLOCK"
+    - "COMMAND_BLOCK_MINECART"
+    - "BARRIER"
+    - "STRUCTURE_BLOCK"
+    - "STRUCTURE_VOID"
+    - "JIGSAW"
+    - "LIGHT"
+    - "DEBUG_STICK"
+
+world-blacklist:
+  enabled: false
+  message: "&cИспользование шалкер-боксов запрещено в этом мире!"
+  worlds:
+    - "world_nether"
+    - "world_the_end"
+
+colors:
+  hex-colors: true
+  legacy-colors: true
+  themes:
+    success: "&#55FF55"
+    error: "&#FF5555"
+    warning: "&#FFAA00"
+    info: "&#55FFFF"
+    cooldown: "&#FF5555"

@@ -28,6 +28,19 @@ messages:
   no-move-open-shulker: "&cYou cannot move an open shulker box!"
   shulker-closed-movement: "&cShulker box closed due to movement attempt!"
   
+  # Command / plugin info messages
+  plugin-info: "&eShulkerKing &7v{version}"
+  plugin-description: "&7Open shulker boxes directly from your hand."
+  command-help: "&7Commands: &f/{label} reload&7, &f/{label} info&7, &f/{label} debug"
+  command-reload: "&7/{label} reload &8- &7reload configuration"
+  reload-success: "&aConfiguration reloaded successfully!"
+  reload-error: "&cFailed to reload configuration, see console."
+  unknown-command: "&cUnknown subcommand. Use &7/{label} reload|info|debug"
+  debug-on: "&aDebug mode enabled."
+  debug-off: "&cDebug mode disabled."
+  contents-saved: "&eShulker contents saved, they will be restored on your next join."
+  contents-restored: "&aShulker contents restored after an unexpected close."
+  
   # Command messages
   command:
     reload: "&aPlugin configuration reloaded successfully!"
@@ -35,6 +48,9 @@ messages:
     debug-off: "&aDebug mode has been &cdisabled&a."
     invalid-args: "&cInvalid arguments. Use: &7/shulkerking [reload|debug]"
     
+gui:
+  title: "&8Shulker Box"
+
 debug:
   session-created: "Created shulker session for {player} with {item}"
   session-closed: "Closed shulker session for {player}"

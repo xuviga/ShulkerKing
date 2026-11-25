@@ -28,39 +28,37 @@ public class ItemBlacklistManager {
             return false;
         }
         
-        List<String> blacklistedItems = plugin.getConfig().getStringList("item-blacklist.items");
+        List<String> blacklistedItems = getBlacklistedItems();
         String itemType = item.getType().name();
         
         return blacklistedItems.contains(itemType);
     }
     
     /**
-     * Handle blacklisted item placement attempt
+     * Handle blacklisted item placement attempt.
+     * Вызывается после event.setCancelled(true) - блокировка гарантирована.
      */
     public void handleBlacklistedItem(Player player, ItemStack item, InventoryClickEvent event) {
-        String action = plugin.getConfig().getString("item-blacklist.mode", "BLOCK");
+        String action = getBlacklistAction();
         String message = getBlacklistMessage();
         
         switch (action.toUpperCase()) {
-            case "BLOCK":
-                // Item placement will be cancelled by the calling method
-                player.sendMessage(message);
-                plugin.getSoundManager().playBlockedSound(player);
-                break;
-                
             case "REMOVE":
-                // Remove the item from inventory
-                player.getInventory().remove(item);
+                // Удаляем только тот предмет, который игрок пытался положить (в курсоре),
+                // а не первый найденный в инвентаре.
+                if (event != null && event.getCursor() != null) {
+                    event.getCursor().setAmount(0);
+                }
                 player.sendMessage(message);
                 plugin.getSoundManager().playBlockedSound(player);
                 plugin.debugLog("Removed blacklisted item " + item.getType() + " from " + player.getName());
                 break;
                 
             case "WARN":
-                // Just warn the player but allow the action
                 player.sendMessage(message);
                 break;
                 
+            case "BLOCK":
             default:
                 player.sendMessage(message);
                 plugin.getSoundManager().playBlockedSound(player);
@@ -84,16 +82,22 @@ public class ItemBlacklistManager {
     }
     
     /**
-     * Get list of blacklisted items
+     * Get list of blacklisted items (поддержаны оба имени ключа: items и blocked-items)
      */
     public List<String> getBlacklistedItems() {
-        return plugin.getConfig().getStringList("item-blacklist.items");
+        if (plugin.getConfig().isSet("item-blacklist.items")) {
+            return plugin.getConfig().getStringList("item-blacklist.items");
+        }
+        return plugin.getConfig().getStringList("item-blacklist.blocked-items");
     }
     
     /**
-     * Get blacklist action type
+     * Get blacklist action type (поддержаны mode и action)
      */
     public String getBlacklistAction() {
-        return plugin.getConfig().getString("item-blacklist.mode", "BLOCK");
+        if (plugin.getConfig().isSet("item-blacklist.mode")) {
+            return plugin.getConfig().getString("item-blacklist.mode", "BLOCK");
+        }
+        return plugin.getConfig().getString("item-blacklist.action", "BLOCK");
     }
 }

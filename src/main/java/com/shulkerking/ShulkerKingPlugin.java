@@ -9,7 +9,6 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
 /**
@@ -28,7 +27,7 @@ import java.util.logging.Level;
  * @version 2.0.0
  * @since 1.16.2
  */
-public final class ShulkerKingPlugin extends JavaPlugin {
+public class ShulkerKingPlugin extends JavaPlugin {
     
     // Plugin instance for static access
     private static ShulkerKingPlugin instance;
@@ -43,6 +42,7 @@ public final class ShulkerKingPlugin extends JavaPlugin {
     private CooldownManager cooldownManager;
     private CooldownDisplayManager cooldownDisplayManager;
     private ShulkerInventoryManager inventoryManager;
+    private SessionStore sessionStore;
     
     // Performance: Cached configuration values
     private volatile boolean pvpBlockEnabled;
@@ -137,7 +137,10 @@ public final class ShulkerKingPlugin extends JavaPlugin {
             
             // Step 5: Post-initialization tasks
             scheduleAsyncTasks();
-            
+
+            // Step 6: восстановить сессии, оставшиеся после краша/выхода
+            restorePendingSessions();
+
             return true;
             
         } catch (Exception e) {
@@ -172,21 +175,26 @@ public final class ShulkerKingPlugin extends JavaPlugin {
             combatManager.clearAllCombat();
         }
         
-        // Save any pending data asynchronously
-        CompletableFuture.runAsync(() -> {
-            try {
-                saveConfig();
-            } catch (Exception e) {
-                getLogger().log(Level.WARNING, "Ошибка сохранения конфигурации:", e);
-            }
-        });
+        // Сброс сессий на диск
+        if (sessionStore != null) {
+            sessionStore.flush();
+        }
+        
+        // Save configuration synchronously (async saveConfig is unsafe during disable)
+        try {
+            saveConfig();
+        } catch (Exception e) {
+            getLogger().log(Level.WARNING, "Ошибка сохранения конфигурации:", e);
+        }
     }
     
     /**
      * Cache frequently accessed configuration values for performance
      */
     private void cacheConfigValues() {
-        pvpBlockEnabled = getConfig().getBoolean("pvp-block.enabled", true);
+        // pvp-block.enabled - актуальный ключ, settings.pvp-block - совместимость со старыми конфигами
+        pvpBlockEnabled = getConfig().getBoolean("pvp-block.enabled",
+            getConfig().getBoolean("settings.pvp-block", true));
         cooldownEnabled = getConfig().getBoolean("cooldown.enabled", true);
         soundsEnabled = getConfig().getBoolean("sounds.enabled", true);
         debugEnabled = getConfig().getBoolean("settings.debug", false);
@@ -218,6 +226,9 @@ public final class ShulkerKingPlugin extends JavaPlugin {
             combatManager = new CombatManager(this);
             cooldownManager = new CooldownManager(this);
             cooldownDisplayManager = new CooldownDisplayManager(this);
+            
+            // Persistent session storage (sessions.yml)
+            sessionStore = new SessionStore(this);
             
             // Inventory manager last (depends on others)
             inventoryManager = new ShulkerInventoryManager(this);
@@ -276,10 +287,38 @@ public final class ShulkerKingPlugin extends JavaPlugin {
             if (combatManager != null) {
                 combatManager.cleanupExpiredCombat();
             }
+            if (inventoryManager != null) {
+                inventoryManager.cleanupPlacementActions();
+            }
         }, 20L * 60L, 20L * 60L); // Every minute
+
+        // Периодический сброс открытых сессий на диск (раз в 5 секунд, только если были изменения)
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (sessionStore != null) {
+                sessionStore.flush();
+            }
+        }, 100L, 100L);
         
         if (debugEnabled) {
             debugLog("Асинхронные задачи запланированы");
+        }
+    }
+    
+    /**
+     * Восстанавливает сессии, оставшиеся после падения сервера или выхода
+     * игрока с открытым шалкер-боксом.
+     */
+    private void restorePendingSessions() {
+        if (sessionStore == null || inventoryManager == null) {
+            return;
+        }
+        int pending = sessionStore.pendingCount();
+        if (pending == 0) {
+            return;
+        }
+        getLogger().info("Найдено незакрытых сессий шалкер-боксов: " + pending);
+        for (org.bukkit.entity.Player player : getServer().getOnlinePlayers()) {
+            inventoryManager.restorePendingSession(player);
         }
     }
     
@@ -333,6 +372,10 @@ public final class ShulkerKingPlugin extends JavaPlugin {
     
     public ShulkerInventoryManager getInventoryManager() {
         return inventoryManager;
+    }
+    
+    public SessionStore getSessionStore() {
+        return sessionStore;
     }
     
     public CombatManager getCombatManager() {
@@ -396,6 +439,16 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         return debugEnabled;
     }
     
+    /**
+     * Переключает режим отладки на лету и сохраняет его в config.yml
+     * @param enabled новое состояние
+     */
+    public void setDebugEnabled(boolean enabled) {
+        this.debugEnabled = enabled;
+        getConfig().set("settings.debug", enabled);
+        saveConfig();
+    }
+    
     public boolean isPvpBlockEnabled() {
         return pvpBlockEnabled;
     }
@@ -441,6 +494,7 @@ public final class ShulkerKingPlugin extends JavaPlugin {
         status.append("- CooldownManager: ").append(cooldownManager != null ? "OK" : "NULL").append("\n");
         status.append("- CooldownDisplayManager: ").append(cooldownDisplayManager != null ? "OK" : "NULL").append("\n");
         status.append("- InventoryManager: ").append(inventoryManager != null ? "OK" : "NULL");
+        status.append("\n- SessionStore: ").append(sessionStore != null ? sessionStore.pendingCount() + " pending" : "NULL");
         return status.toString();
     }
 }

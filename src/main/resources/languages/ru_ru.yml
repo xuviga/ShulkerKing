@@ -28,6 +28,19 @@ messages:
   no-move-open-shulker: "&cНельзя перемещать открытый шалкер-бокс!"
   shulker-closed-movement: "&cШалкер-бокс закрыт из-за попытки перемещения!"
   
+  # Сообщения команд / информации о плагине
+  plugin-info: "&eShulkerKing &7v{version}"
+  plugin-description: "&7Открытие шалкер-боксов прямо из руки."
+  command-help: "&7Команды: &f/{label} reload&7, &f/{label} info&7, &f/{label} debug"
+  command-reload: "&7/{label} reload &8- &7перезагрузить конфигурацию"
+  reload-success: "&aКонфигурация успешно перезагружена!"
+  reload-error: "&cНе удалось перезагрузить конфигурацию, смотрите консоль."
+  unknown-command: "&cНеизвестная подкоманда. Используйте &7/{label} reload|info|debug"
+  debug-on: "&aРежим отладки включен."
+  debug-off: "&cРежим отладки отключен."
+  contents-saved: "&eСодержимое шалкера сохранено и будет восстановлено при следующем входе."
+  contents-restored: "&aСодержимое шалкера восстановлено после некорректного закрытия."
+  
   # Сообщения команд
   command:
     reload: "&aКонфигурация плагина успешно перезагружена!"
@@ -35,6 +48,9 @@ messages:
     debug-off: "&aРежим отладки &cотключен&a."
     invalid-args: "&cНеверные аргументы. Используйте: &7/shulkerking [reload|debug]"
     
+gui:
+  title: "&8Шалкер-бокс"
+
 debug:
   session-created: "Создана сессия шалкера для {player} с {item}"
   session-closed: "Закрыта сессия шалкера для {player}"

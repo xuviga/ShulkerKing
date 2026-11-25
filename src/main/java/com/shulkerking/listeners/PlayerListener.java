@@ -12,6 +12,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.block.Action;
@@ -35,11 +36,12 @@ public class PlayerListener implements Listener {
         }
         
         Player player = (Player) event.getEntity();
-        plugin.getCombatManager().markInCombat(player);
+        
+        // ВАЖНО: боевая метка теперь ставится только за PvP (onPlayerDamageByEntity),
+        // а не за любой урон (падение, огонь, кактус).
         
         // Close shulker inventory if player takes damage and PvP blocking is enabled
-        if (plugin.getConfig().getBoolean("settings.pvp-block", false) && 
-            plugin.getInventoryManager().hasActiveSession(player)) {
+        if (plugin.isPvpBlockEnabled() && plugin.getInventoryManager().hasActiveSession(player)) {
             plugin.getInventoryManager().closeShulkerInventory(player);
             player.sendMessage(plugin.getMessage(player, "messages.in-combat"));
         }
@@ -47,28 +49,49 @@ public class PlayerListener implements Listener {
     
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerDamageByEntity(EntityDamageByEntityEvent event) {
-        // Mark both attacker and victim in combat
-        if (event.getDamager() instanceof Player) {
-            Player attacker = (Player) event.getDamager();
+        // PvP: игрок или снаряд игрока
+        Player attacker = resolvePlayerDamager(event.getDamager());
+        
+        if (attacker != null) {
             plugin.getCombatManager().markInCombat(attacker);
             
-            if (plugin.getConfig().getBoolean("settings.pvp-block", false) && 
+            if (plugin.isPvpBlockEnabled() && 
                 plugin.getInventoryManager().hasActiveSession(attacker)) {
                 plugin.getInventoryManager().closeShulkerInventory(attacker);
                 attacker.sendMessage(plugin.getMessage(attacker, "messages.in-combat"));
             }
         }
         
-        if (event.getEntity() instanceof Player) {
+        if (event.getEntity() instanceof Player && attacker != null) {
             Player victim = (Player) event.getEntity();
+            if (attacker.getUniqueId().equals(victim.getUniqueId())) {
+                return;
+            }
             plugin.getCombatManager().markInCombat(victim);
             
-            if (plugin.getConfig().getBoolean("settings.pvp-block", false) && 
+            if (plugin.isPvpBlockEnabled() && 
                 plugin.getInventoryManager().hasActiveSession(victim)) {
                 plugin.getInventoryManager().closeShulkerInventory(victim);
                 victim.sendMessage(plugin.getMessage(victim, "messages.in-combat"));
             }
         }
+    }
+    
+    /**
+     * Возвращает игрока-источник урона: прямой удар или снаряд игрока.
+     */
+    private Player resolvePlayerDamager(org.bukkit.entity.Entity damager) {
+        if (damager instanceof Player) {
+            return (Player) damager;
+        }
+        if (damager instanceof org.bukkit.entity.Projectile) {
+            org.bukkit.projectiles.ProjectileSource shooter =
+                ((org.bukkit.entity.Projectile) damager).getShooter();
+            if (shooter instanceof Player) {
+                return (Player) shooter;
+            }
+        }
+        return null;
     }
     
     // УДАЛЕН: Дублирующий обработчик onPlayerDropItem
@@ -92,9 +115,11 @@ public class PlayerListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         
-        // Close any active shulker session to prevent data loss
+        // Close any active shulker session to prevent data loss.
+        // Если предмет с меткой потерян - сессия остаётся в sessions.yml
+        // и восстановится при следующем входе (giveIfMissing = false).
         if (plugin.getInventoryManager().hasActiveSession(player)) {
-            plugin.getInventoryManager().closeShulkerInventory(player);
+            plugin.getInventoryManager().closeShulkerInventory(player, false);
             plugin.debugLog("Closed shulker inventory for " + player.getName() + " due to quit");
         }
         
@@ -102,8 +127,22 @@ public class PlayerListener implements Listener {
         plugin.getCombatManager().removeCombat(player);
     }
     
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        
+        // Восстановление сессии, оставшейся после краша сервера/выхода с открытым GUI
+        plugin.getInventoryManager().restorePendingSession(player);
+    }
+    
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerInteract(PlayerInteractEvent event) {
+        // Событие могли отменить другие плагины (или наш собственный обработчик) -
+        // размещать в этом случае нельзя.
+        if (event.isCancelled()) {
+            return;
+        }
+        
         Player player = event.getPlayer();
         ItemStack item = event.getItem();
         
@@ -122,6 +161,13 @@ public class PlayerListener implements Listener {
         // Check permissions
         if (!player.hasPermission("shulkerking.place")) {
             player.sendMessage(plugin.getMessage(player, "messages.no-permission-place"));
+            event.setCancelled(true);
+            return;
+        }
+        
+        // Check world blacklist (единая точка проверки)
+        if (!plugin.getWorldManager().isWorldAllowed(player)) {
+            player.sendMessage(plugin.getWorldManager().getBlacklistMessage());
             event.setCancelled(true);
             return;
         }
@@ -163,19 +209,10 @@ public class PlayerListener implements Listener {
         }
         
         // Check if target location is valid
-        if (targetBlock == null || targetBlock.getType() != Material.AIR) {
+        if (targetBlock == null || !targetBlock.getType().isAir() || targetBlock.isLiquid()) {
             player.sendMessage(plugin.getMessage(player, "messages.cannot-place"));
             event.setCancelled(true);
             return;
-        }
-        
-        // Check world blacklist
-        if (plugin.getConfig().getBoolean("world-blacklist.enabled", false)) {
-            if (plugin.getConfig().getStringList("world-blacklist.worlds").contains(player.getWorld().getName())) {
-                player.sendMessage(plugin.getMessage(player, "messages.world-blacklisted"));
-                event.setCancelled(true);
-                return;
-            }
         }
         
         // ИСПРАВЛЕНИЕ: Если у игрока есть активная сессия с этим шалкером, сначала сохраняем содержимое
@@ -187,10 +224,62 @@ public class PlayerListener implements Listener {
         } else {
             plugin.debugLog("[PLACE] No active session found for " + player.getName());
         }
+
+        // Содержимое только что записано обратно в предмет - перечитываем его из руки,
+        // иначе можно поставить блок с устаревшим (пустым) состоянием.
+        ItemStack liveItem = event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND
+            ? player.getInventory().getItemInOffHand()
+            : player.getInventory().getItemInMainHand();
+        if (liveItem == null || !plugin.getInventoryManager().isShulkerBox(liveItem)) {
+            player.sendMessage(plugin.getMessage(player, "messages.cannot-place"));
+            event.setCancelled(true);
+            return;
+        }
+        item = liveItem;
         
         // Place the shulker box
         Material shulkerType = item.getType();
-        targetBlock.setType(shulkerType);
+
+        // API: собственное событие размещения (можно отменить другим плагинам)
+        com.shulkerking.api.events.ShulkerPlaceEvent shulkerPlaceEvent =
+            new com.shulkerking.api.events.ShulkerPlaceEvent(player, item.clone(), targetBlock);
+        plugin.getServer().getPluginManager().callEvent(shulkerPlaceEvent);
+        if (shulkerPlaceEvent.isCancelled()) {
+            event.setCancelled(true);
+            player.sendMessage(plugin.getMessage(player, "messages.cannot-place"));
+            return;
+        }
+
+        // Ставим блок и даём защитам (WorldGuard, GriefPrevention, Towny...) шанс отменить
+        // установку: без BlockPlaceEvent плагин обходил все региональные запреты.
+        org.bukkit.block.BlockState replacedState = targetBlock.getState();
+        targetBlock.setType(shulkerType, false);
+
+        org.bukkit.inventory.EquipmentSlot hand = event.getHand() != null
+            ? event.getHand() : org.bukkit.inventory.EquipmentSlot.HAND;
+
+        org.bukkit.event.block.BlockPlaceEvent placeEvent = new org.bukkit.event.block.BlockPlaceEvent(
+            targetBlock,
+            replacedState,
+            event.getClickedBlock() != null ? event.getClickedBlock() : targetBlock,
+            item,
+            player,
+            true,
+            hand
+        );
+        plugin.getServer().getPluginManager().callEvent(placeEvent);
+
+        if (placeEvent.isCancelled()) {
+            replacedState.update(true, false);
+            event.setCancelled(true);
+            player.sendMessage(plugin.getMessage(player, "messages.cannot-place"));
+            return;
+        }
+
+        // КРИТИЧНО: блок поставлен вручную - гасим ванильную установку,
+        // иначе сервер поставит блок второй раз и спишет ещё один предмет
+        // (это и был "недопис кода", из-за которого шалкер ставился бесконечно).
+        event.setCancelled(true);
         
         // Copy the shulker box data to the placed block
         if (targetBlock.getState() instanceof org.bukkit.block.ShulkerBox) {
@@ -317,12 +406,9 @@ public class PlayerListener implements Listener {
         // Mark this as a placement action to prevent false item-changed messages
         plugin.getInventoryManager().markPlacementAction(player);
         
-        // Remove item from player's hand
-        if (item.getAmount() > 1) {
-            item.setAmount(item.getAmount() - 1);
-        } else {
-            player.getInventory().setItem(player.getInventory().getHeldItemSlot(), null);
-        }
+        // Remove item from the hand that was actually used (main/off hand)
+        com.shulkerking.util.HandItemUtil.consumeOne(player, hand);
+        player.updateInventory();
         
         // Play sound effect
         if (plugin.getConfig().getBoolean("sounds.enabled", true)) {

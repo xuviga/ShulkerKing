@@ -60,6 +60,23 @@ public class ShulkerKingCommand implements CommandExecutor {
             return true;
         }
         
+        if (args[0].equalsIgnoreCase("info")) {
+            sender.sendMessage(plugin.getLocaleManager().getMessage(locale, "messages.plugin-info")
+                .replace("{version}", plugin.getDescription().getVersion()));
+            for (String line : plugin.getManagerStatus().split("\n")) {
+                sender.sendMessage("§7" + line);
+            }
+            return true;
+        }
+        
+        if (args[0].equalsIgnoreCase("debug")) {
+            boolean newState = !plugin.isDebugEnabled();
+            plugin.setDebugEnabled(newState);
+            String key = newState ? "messages.debug-on" : "messages.debug-off";
+            sender.sendMessage(plugin.getLocaleManager().getMessage(locale, key));
+            return true;
+        }
+        
         sender.sendMessage(plugin.getLocaleManager().getMessage(locale, "messages.unknown-command").replace("{label}", label));
         return true;
     }

@@ -1,4 +1,4 @@
-# 📦 ShulkerKing v2.0.5
+# 📦 ShulkerKing v2.0.6
 
 **Современный плагин для Minecraft Spigot/Paper для открытия шалкер-боксов прямо из руки**
 
@@ -40,7 +40,7 @@
 ## 🚀 Установка
 
 1. Скачайте последнюю версию плагина
-2. Поместите файл `ShulkerKing-2.0.3.jar` в папку `plugins/`
+2. Поместите файл `ShulkerKing-2.0.6.jar` в папку `plugins/`
 3. Перезапустите сервер
 4. Настройте конфигурацию в файле `plugins/ShulkerKing/config.yml`
 5. Перезагрузите плагин командой `/shulkerking reload`
@@ -78,25 +78,28 @@ shulkerking.cooldown.bypass   # Полное отключение кулдаун
 ```yaml
 settings:
   main-hand: true           # Разрешить использование главной руки
-  offhand: true            # Разрешить использование второй руки
-  shift-place: true        # Размещение через Shift+ПКМ
-  pvp-block: true          # Блокировка во время PvP
-  pvp-timeout: 10          # Время блокировки после боя (сек)
-  debug: false             # Режим отладки
+  offhand: true             # Разрешить использование второй руки
+  shift-place: true         # Размещение через Shift+ПКМ
+  debug: false              # Режим отладки
+
+pvp-block:
+  enabled: true             # Блокировка во время PvP
+  combat-time: 10           # Время блокировки после боя (сек)
 ```
 
 ### Система кулдаунов
 ```yaml
 cooldown:
   enabled: true
-  default-time: 3.0        # Стандартный кулдаун (сек)
+  default: 3.0             # Стандартный кулдаун (сек)
+  vip: 2.0                 # Для права shulkerking.cooldown.vip
+  premium: 1.0             # Для права shulkerking.cooldown.premium
   visual-display:
     enabled: true          # Визуальное отображение
-    show-on-item: true     # Показывать на предмете
-  permission-overrides:    # Кулдауны по правам
-    shulkerking.cooldown.vip: 1.5
-    shulkerking.cooldown.premium: 0.5
-    shulkerking.cooldown.bypass: 0.0
+    live-update: true      # Обновлять лор каждую секунду
+    format: "&7Кулдаун: &c{time}с"
+    ready-message: "&a✓ Готов к открытию"
+    ready-message-duration: 40
 ```
 
 ### Звуковые эффекты
@@ -125,9 +128,9 @@ sounds:
 ```yaml
 item-blacklist:
   enabled: false
-  action: "CANCEL"         # CANCEL, REMOVE, WARN
+  mode: "BLOCK"            # BLOCK, REMOVE, WARN
   message: "&cЭтот предмет нельзя помещать в шалкер-боксы!"
-  blocked-items:
+  items:
     - "BEDROCK"
     - "COMMAND_BLOCK"
     - "BARRIER"
@@ -166,6 +169,29 @@ world-blacklist:
 ShulkerKingPlugin plugin = ShulkerKingPlugin.getInstance();
 ```
 
+### События (Events)
+```java
+// Запретить открытие шалкера
+@EventHandler
+public void onShulkerOpen(ShulkerOpenEvent event) {
+    if (event.getPlayer().hasPermission("some.lock")) {
+        event.setCancelled(true);
+    }
+}
+
+// Реакция на закрытие (после записи содержимого в предмет)
+@EventHandler
+public void onShulkerClose(ShulkerCloseEvent event) {
+    String sessionId = event.getSessionId();
+}
+
+// Запретить размещение через Shift+ПКМ
+@EventHandler
+public void onShulkerPlace(ShulkerPlaceEvent event) {
+    event.setCancelled(true);
+}
+```
+
 ### Работа с сессиями
 ```java
 // Проверить активную сессию
@@ -181,23 +207,18 @@ boolean isShulker = plugin.getInventoryManager().isShulkerBox(itemStack);
 ### Работа с кулдаунами
 ```java
 // Проверить кулдаун
-boolean hasCooldown = plugin.getCooldownManager().hasCooldown(player);
+boolean hasCooldown = plugin.getCooldownManager().hasCooldown(player, itemStack);
 
 // Установить кулдаун
-plugin.getCooldownManager().setCooldown(player);
+plugin.getCooldownManager().setCooldown(player, itemStack);
 
 // Получить оставшееся время
-double remaining = plugin.getCooldownManager().getRemainingCooldown(player);
+double remaining = plugin.getCooldownManager().getRemainingCooldown(player, itemStack);
 ```
 
 ### События (Events)
-```java
-// Пример слушателя событий
-@EventHandler
-public void onShulkerOpen(PlayerInteractEvent event) {
-    // Ваш код здесь
-}
-```
+Полный список событий и примеры — в разделе API выше:
+`ShulkerOpenEvent`, `ShulkerCloseEvent`, `ShulkerPlaceEvent` (`com.shulkerking.api.events`).
 
 ## 🐛 Отладка и диагностика
 
@@ -269,7 +290,45 @@ settings:
 - Укажите случаи использования
 - Приложите примеры конфигурации
 
+## 🧪 Тесты
+
+Регрессия на дюп из отзывов (списание предмета из неверной руки) — `tests/dup-regression`:
+
+```powershell
+cd D:\MineCraft\plugins\plugins\ShulkerKing
+mvn -DskipTests clean package
+mvn install:install-file -Dfile=target\ShulkerKing-2.0.6.jar -DgroupId=com.shulkerking -DartifactId=ShulkerKing -Dversion=2.0.6 -Dpackaging=jar
+cd tests\dup-regression
+mvn test
+```
+
+Ожидаемо: `Tests run: 4, Failures: 0, Errors: 0`.
+
 ## 📝 Changelog
+
+### v2.0.6 (2025-11-25) - РЕМОНТ СБОРКИ И АНТИ-ДЮП
+- 🚨 **Анти-дюп модель переработана**: при открытии содержимое переносится в сессию, а предмет в руке очищается и помечается `session-id` (PersistentDataContainer). Пока GUI открыт, второй копии содержимого не существует
+- 💾 **Персистентные сессии** (`plugins/ShulkerKing/sessions.yml`): каждое изменение сбрасывается на диск, после краша/выхода содержимое восстанавливается при следующем входе игрока
+- 🔒 **Точная идентичность бокса** по `session-id` (PDC) вместо сравнения типа и имени
+- 🧩 **API-события**: `ShulkerOpenEvent` (Cancellable), `ShulkerCloseEvent`, `ShulkerPlaceEvent` (Cancellable)
+- 🥊 Боевая метка ставится только за PvP (игрок или снаряд игрока), а не за любой урон
+- 🚚 Анти-хоппер проверяет реальный holder GUI, а не «любой инвентарь на 27 слотов»
+- ↩️ Отмена `InventoryOpenEvent` другим плагином корректно откатывает сессию
+- 🎯 ID кулдауна без `hashCode` (устранены коллизии)
+- 🚨 **Добавлен config.yml**: в jar-файле его не было, из-за чего `saveDefaultConfig()` бросал `IllegalArgumentException` и плагин вообще не загружался
+- 🔑 **Исправлен plugin.yml**: права были вложены внутрь секции `commands` и не регистрировались (`shulkerking.place`, `cooldown.vip/premium/bypass` были доступны только операторам)
+- 🛡️ **Shift+ПКМ больше не открывает GUI и не ставит блок одновременно**: дублирующий обработчик теперь уважает `event.isCancelled()`
+- 🧱 **Сохранение теперь пишется после клика, а не до него** (убрано отставание на одно действие и окно для дюпа)
+- 🧱 Убрана задержка 50 мс, отменявшая часть нормальных кликов в GUI
+- 🧱 Чёрный список предметов реально отменяет клик (раньше только писал сообщение)
+- 🧱 Установка шалкер-бокса теперь вызывает `BlockPlaceEvent` — региональные защиты (WorldGuard, GriefPrevention) работают
+- 🧱 Исправлено размещение из второй руки (удалялся предмет из главной руки — это и был дюп из отзыва: шалкер в левой руке ставился бесконечно)
+- 🧱 После ручной установки событие `PlayerInteractEvent` гасится: ваниль больше не ставит второй блок и не списывает второй предмет
+- 🧱 `closeAllInventories()` больше не падает с `ConcurrentModificationException` при 2+ открытых шалкерах
+- 🧱 Кулдауны и боевые метки переведены на `ConcurrentHashMap` (асинхронная очистка)
+- 🧱 Кулдаун больше не сбрасывается при изменении содержимого шалкера
+- 🌍 Добавлены отсутствующие ключи локализации (`plugin-info`, `reload-success`, `debug-on`, `gui.title` и др.)
+- ⚙️ Ключи конфига приведены к коду: `pvp-block.enabled`, `cooldown.default`, `item-blacklist.items/mode` (старые имена поддерживаются)
 
 ### v2.0.5 (2025-08-24) - КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ
 - 🚨 **ИСПРАВЛЕНА КРИТИЧЕСКАЯ УЯЗВИМОСТЬ** дюпликации предметов через выбрасывание

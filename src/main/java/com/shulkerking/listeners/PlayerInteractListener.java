@@ -32,6 +32,13 @@ public class PlayerInteractListener implements Listener {
             return;
         }
         
+        // Shift+ПКМ = размещение, им занимается PlayerListener.
+        // Без этого выхода оба обработчика срабатывают на одно событие:
+        // открывался GUI и одновременно ставился блок.
+        if (player.isSneaking() && plugin.getConfig().getBoolean("settings.shift-place", true)) {
+            return;
+        }
+        
         // Check if world is allowed
         if (!plugin.getWorldManager().isWorldAllowed(player)) {
             player.sendMessage(plugin.getWorldManager().getBlacklistMessage());
@@ -82,8 +89,7 @@ public class PlayerInteractListener implements Listener {
         }
         
         // Check if player is in combat
-        if (plugin.getConfig().getBoolean("settings.pvp-block", false) && 
-            plugin.getCombatManager().isInCombat(player)) {
+        if (plugin.isPvpBlockEnabled() && plugin.getCombatManager().isInCombat(player)) {
             player.sendMessage(plugin.getMessage(player, "messages.in-combat"));
             plugin.getSoundManager().playBlockedSound(player);
             event.setCancelled(true);
@@ -95,13 +101,18 @@ public class PlayerInteractListener implements Listener {
         
         // Open the shulker box inventory
         boolean isMainHand = event.getHand() == EquipmentSlot.HAND;
-        plugin.getInventoryManager().openShulkerInventory(player, item, isMainHand);
-        
+        boolean opened = plugin.getInventoryManager().openShulkerInventory(player, item, isMainHand);
+
+        if (!opened) {
+            // Не открылось (например, стак > 1) - ничего не кулдауним и не озвучиваем
+            return;
+        }
+
         // Set cooldown after successful opening
         plugin.getCooldownManager().setCooldown(player, item);
 
         // Start visual countdown
-        if (plugin.getConfig().getBoolean("cooldown.visual-display.enabled", true)) {
+        if (plugin.isVisualCooldownEnabled()) {
             String itemIdentifier = plugin.getCooldownManager().getItemIdentifier(item);
             plugin.getCooldownDisplayManager().startVisualCountdown(player, itemIdentifier);
         }

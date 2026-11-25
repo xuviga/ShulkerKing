@@ -2,34 +2,35 @@ package com.shulkerking.managers;
 
 import com.shulkerking.ShulkerKingPlugin;
 import org.bukkit.ChatColor;
-import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CooldownManager {
 
     private final ShulkerKingPlugin plugin;
     // Ключ: "UUID_игрока:уникальный_ID_предмета"
+    // ConcurrentHashMap: очистка выполняется в асинхронной задаче
     private final Map<String, Long> cooldowns;
 
     public CooldownManager(ShulkerKingPlugin plugin) {
         this.plugin = plugin;
-        this.cooldowns = new HashMap<>();
+        this.cooldowns = new ConcurrentHashMap<>();
     }
 
     /**
-     * Создает стабильный уникальный идентификатор для предмета, игнорируя лор с кулдауном.
+     * Создает стабильный уникальный идентификатор для предмета.
+     * ВАЖНО: содержимое шалкера и лор кулдауна в ID НЕ входят - иначе
+     * после любого изменения содержимого менялся ключ и кулдаун "сбрасывался".
      */
     public String getItemIdentifier(ItemStack item) {
         if (item == null || !item.hasItemMeta()) {
-            return "null_item";
+            return item == null ? "null_item" : item.getType().name();
         }
         ItemMeta meta = item.getItemMeta().clone();
 
@@ -47,27 +48,11 @@ public class CooldownManager {
         }
 
         StringBuilder identifierBase = new StringBuilder(item.getType().name());
-        if (meta.hasDisplayName()) {
-            identifierBase.append(meta.getDisplayName());
-        }
-        if (meta.hasLore()) {
-            identifierBase.append(meta.getLore().toString());
-        }
-        
-        // Для шалкеров включаем в ID их содержимое
-        if (meta instanceof BlockStateMeta) {
-            BlockStateMeta blockMeta = (BlockStateMeta) meta;
-            if (blockMeta.getBlockState() instanceof ShulkerBox) {
-                ShulkerBox shulker = (ShulkerBox) blockMeta.getBlockState();
-                for (ItemStack contentItem : shulker.getInventory().getContents()) {
-                    if (contentItem != null) {
-                        identifierBase.append(contentItem.toString());
-                    }
-                }
-            }
-        }
+        identifierBase.append('|').append(meta.hasDisplayName() ? meta.getDisplayName() : "");
+        identifierBase.append('|').append(meta.hasLore() ? meta.getLore() : "");
 
-        return String.valueOf(identifierBase.toString().hashCode());
+        // Без hashCode: коллизии хешей давали ложные срабатывания кулдауна
+        return identifierBase.toString();
     }
 
     private String createCooldownKey(Player player, ItemStack item) {
@@ -75,7 +60,7 @@ public class CooldownManager {
     }
 
     public boolean hasCooldown(Player player, ItemStack item) {
-        if (item == null) return false;
+        if (item == null || !plugin.isCooldownEnabled()) return false;
         String cooldownKey = createCooldownKey(player, item);
         
         if (!cooldowns.containsKey(cooldownKey)) {
@@ -100,7 +85,7 @@ public class CooldownManager {
     }
 
     public void setCooldown(Player player, ItemStack item) {
-        if (item == null) return;
+        if (item == null || !plugin.isCooldownEnabled()) return;
         
         double cooldownTime = getCooldownTime(player);
         if (cooldownTime <= 0) {
@@ -143,22 +128,40 @@ public class CooldownManager {
         // Проверка прав на кастомные кулдауны
         if (player.hasPermission("shulkerking.cooldown.premium")) {
             if (!player.isOp() || player.isPermissionSet("shulkerking.cooldown.premium")) {
-                 double time = plugin.getConfig().getDouble("cooldown.premium", 1.0);
+                 double time = getConfiguredCooldown("cooldown.premium", 1.0);
                  plugin.debugLog("У игрока " + player.getName() + " премиум кулдаун: " + time + "с");
                  return time;
             }
         }
         if (player.hasPermission("shulkerking.cooldown.vip")) {
              if (!player.isOp() || player.isPermissionSet("shulkerking.cooldown.vip")) {
-                double time = plugin.getConfig().getDouble("cooldown.vip", 2.0);
+                double time = getConfiguredCooldown("cooldown.vip", 2.0);
                 plugin.debugLog("У игрока " + player.getName() + " VIP кулдаун: " + time + "с");
                 return time;
              }
         }
 
-        // Стандартный кулдаун
-        double defaultTime = plugin.getConfig().getDouble("cooldown.default", 3.0);
+        // Стандартный кулдаун (поддержаны оба имени ключа: cooldown.default и cooldown.default-time)
+        double defaultTime = getConfiguredCooldown("cooldown.default", 3.0);
         plugin.debugLog("Игроку " + player.getName() + " назначен стандартный кулдаун: " + defaultTime + "с");
         return defaultTime;
+    }
+
+    /**
+     * Читает кулдаун из конфига, поддерживая и новый, и старый (README) формат ключей:
+     * cooldown.default / cooldown.default-time и cooldown.permission-overrides.&lt;permission&gt;.
+     */
+    private double getConfiguredCooldown(String key, double fallback) {
+        if (plugin.getConfig().isSet(key)) {
+            return plugin.getConfig().getDouble(key, fallback);
+        }
+        if ("cooldown.default".equals(key) && plugin.getConfig().isSet("cooldown.default-time")) {
+            return plugin.getConfig().getDouble("cooldown.default-time", fallback);
+        }
+        String overrides = "cooldown.permission-overrides." + key.substring("cooldown.".length());
+        if (plugin.getConfig().isSet(overrides)) {
+            return plugin.getConfig().getDouble(overrides, fallback);
+        }
+        return fallback;
     }
 }

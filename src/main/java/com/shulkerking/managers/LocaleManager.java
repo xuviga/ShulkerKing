@@ -54,7 +54,8 @@ public class LocaleManager {
                 // Load from resources
                 InputStream stream = plugin.getResource("languages/" + languageCode + ".yml");
                 if (stream == null) {
-                    plugin.getLogger().warning("Language file not found: " + languageCode + ".yml");
+                    // Отсутствующий язык - не ошибка: недостающие ключи берутся из en_us
+                    plugin.debugLog("Language file not shipped: " + languageCode + ".yml");
                     return;
                 }
                 

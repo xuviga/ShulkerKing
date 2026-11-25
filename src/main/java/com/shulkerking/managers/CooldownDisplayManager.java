@@ -102,6 +102,12 @@ public class CooldownDisplayManager {
                     return;
                 }
 
+                // Пока открыт GUI шалкера, предмет в руке не трогаем:
+                // лор перезаписывается сохранением содержимого.
+                if (plugin.getInventoryManager().hasActiveSession(player)) {
+                    return;
+                }
+
                 // Находим актуальный предмет в инвентаре
                 ItemStack currentItem = findItemInInventory(player, itemIdentifier);
                 if (currentItem == null) {

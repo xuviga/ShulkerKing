@@ -3,9 +3,9 @@ package com.shulkerking.managers;
 import com.shulkerking.ShulkerKingPlugin;
 import org.bukkit.entity.Player;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CombatManager {
     
@@ -14,7 +14,8 @@ public class CombatManager {
     
     public CombatManager(ShulkerKingPlugin plugin) {
         this.plugin = plugin;
-        this.combatData = new HashMap<>();
+        // очистка выполняется асинхронно - нужен потокобезопасный map
+        this.combatData = new ConcurrentHashMap<>();
     }
     
     public void markInCombat(Player player) {

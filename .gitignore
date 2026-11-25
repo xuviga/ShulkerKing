@@ -80,6 +80,10 @@ ehthumbs.db
 Thumbs.db
 
 # Plugin specific
-config.yml
+/config.yml
 logs/
+.squad/
+*.db
+*.db-shm
+*.db-wal
 plugins/
